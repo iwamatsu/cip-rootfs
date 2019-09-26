@@ -1,0 +1,101 @@
+{{- $architecture := or .architecture "armhf" -}}
+{{- $suite := or .suite "buster" -}}
+{{ $image := or .image (printf "debian-%s-%s-ltp.tar.gz" $suite $architecture) }}
+{{- $ltp_version := or .ltp_version "20190517" -}}
+
+architecture: {{ $architecture }}
+
+actions:
+  - action: debootstrap
+    suite: {{ $suite }}
+    components:
+      - main
+    mirror: https://deb.debian.org/debian
+    variant: minbase
+
+  - action: apt
+    description: Install base packages
+    recommends: false
+    packages: [systemd-sysv, udev]
+
+  - action: run
+    chroot: true
+    script: scripts/setup-root.sh
+
+  - action: run
+    chroot: true
+    command: echo debian > /etc/hostname
+
+  - action: run
+    chroot: true
+    command: systemctl enable serial-getty@ttyS0.service
+
+  - action: run
+    chroot: true
+    command: systemctl enable serial-getty@ttySC0.service
+
+  - action: run
+    chroot: true
+    command: systemctl enable serial-getty@ttySC1.service
+
+  - action: run
+    chroot: true
+    command: systemctl enable serial-getty@ttySC3.service
+
+  - action: download                                                                                                                                                                                                                       
+    description: Download latest version of LTP from GitHub                                                                                                                                                                                
+    url: https://github.com/linux-test-project/ltp/releases/download/{{ $ltp_version }}/ltp-full-{{ $ltp_version }}.tar.bz2                                                                                                                
+    unpack: true                                                                                                                                                                                                                           
+    name: ltp-source                                                                                                                                                                                                                       
+
+  - action: run
+    chroot: true
+    command: mkdir -p /opt/ltp
+
+  - action: overlay
+    origin: ltp-source
+    source: ltp-full-{{ $ltp_version }}/
+    destination: /opt/ltp/source
+
+  - action: apt
+    description: Install extra packages
+    packages:
+      - sudo
+      - xz-utils
+      - flex
+      - bison
+      - build-essential
+      - wget
+      - curl
+      - net-tools
+      - quota
+      - genisoimage
+      - sudo
+      - libaio-dev
+      - expect
+      - automake
+      - acl
+
+  - action: run
+    chroot: true
+    command: cd /opt/ltp/source && ./configure --with-realtime-test-suite --with-open-posix-testsuite --prefix=/opt/ltp
+
+  - action: run
+    chroot: true
+    command: cd /opt/ltp/source && make -j10
+
+  - action: run
+    chroot: true
+    command: cd /opt/ltp/source && make install
+
+  - action: run
+    chroot: true
+    command: rm -rf /opt/ltp/source
+
+  - action: run
+    chroot: true
+    command: apt-get remove -y build-essential libaio-dev automake bison flex *-dev && apt-get -y autoremove 
+
+  - action: pack
+    file: {{ $image }}
+    compression: gz
