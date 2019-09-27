@@ -94,7 +94,7 @@ actions:
 
   - action: run
     chroot: true
-    command: apt-get remove -y build-essential libaio-dev automake bison flex *-dev && apt-get -y autoremove 
+    command: apt-get remove -y build-essential automake bison flex *-dev && apt-get -y autoremove
 
   - action: pack
     file: {{ $image }}
