@@ -90,7 +90,7 @@ actions:
 
   - action: run
     chroot: true
-    command: rm -rf /opt/ltp/source
+    command: rm -rf /opt/ltp/source; rm -rf /opt/ltp/share
 
   - action: run
     chroot: true
